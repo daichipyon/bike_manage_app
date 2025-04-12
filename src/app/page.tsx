@@ -243,6 +243,7 @@ export default function BicycleSlotsPage() {
 
   const refreshData = () => {
     queryClient.invalidateQueries({ queryKey: ['bicycle_slots_with_residents'] });
+    queryClient.invalidateQueries({ queryKey: ['bicycle_slots'] });
   };
 
   useEffect(() => {
