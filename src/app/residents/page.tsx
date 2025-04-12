@@ -1,19 +1,18 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useRouter } from 'next/navigation';
 import MainLayout from '@/components/layout/MainLayout';
 import { Database } from '@/types/supabase';
 import { PlusIcon, PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { useResidents, useSupabaseMutation } from '@/lib/queries';
 
 type Resident = Database['public']['Tables']['residents']['Row'];
 
 export default function ResidentsPage() {
   const supabase = createClientComponentClient<Database>();
   const router = useRouter();
-  const [residents, setResidents] = useState<Resident[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingResident, setEditingResident] = useState<Resident | null>(null);
   const [formData, setFormData] = useState({
@@ -23,36 +22,70 @@ export default function ResidentsPage() {
     status: 'active',
   });
 
-  // Fetch residents
-  useEffect(() => {
-    const checkAuthAndFetchData = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        router.push('/login');
-      } else {
-        fetchResidents();
-      }
-    };
+  // Use the TanStack Query hook to fetch residents
+  const { 
+    data: residents = [], 
+    isLoading, 
+    refetch 
+  } = useResidents();
 
-    checkAuthAndFetchData();
-  }, [supabase, router]);
-
-  const fetchResidents = async () => {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
+  // Setup mutations
+  const createResidentMutation = useSupabaseMutation('residents', {
+    mutationFn: async (newResident: Omit<Resident, 'id' | 'created_at' | 'updated_at'>) => {
+      return supabase
         .from('residents')
-        .select('*')
-        .order('room_number', { ascending: true });
-      
-      if (error) throw error;
-      setResidents(data || []);
-    } catch (error) {
-      console.error('Error fetching residents:', error);
-    } finally {
-      setLoading(false);
+        .insert([newResident]);
+    },
+    mutationOptions: {
+      onSuccess: () => {
+        refetch();
+        resetForm();
+        setShowAddModal(false);
+      },
+      onError: (error) => {
+        console.error('Error creating resident:', error);
+      },
     }
-  };
+  });
+
+  const updateResidentMutation = useSupabaseMutation('residents', {
+    mutationFn: async ({ id, ...updateData }: Partial<Resident> & { id: number }) => {
+      return supabase
+        .from('residents')
+        .update({
+          ...updateData,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id);
+    },
+    mutationOptions: {
+      onSuccess: () => {
+        refetch();
+        resetForm();
+        setShowAddModal(false);
+      },
+      onError: (error) => {
+        console.error('Error updating resident:', error);
+      },
+    }
+  });
+
+  const deleteResidentMutation = useSupabaseMutation('residents', {
+    mutationFn: async (id: number) => {
+      return supabase
+        .from('residents')
+        .delete()
+        .eq('id', id);
+    },
+    mutationOptions: {
+      onSuccess: () => {
+        refetch();
+      },
+      onError: (error) => {
+        console.error('Error deleting resident:', error);
+      },
+    }
+  });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({
@@ -84,62 +117,36 @@ export default function ResidentsPage() {
 
   const handleDeleteClick = async (id: number) => {
     if (!window.confirm('この居住者を削除しますか？')) return;
-    
-    try {
-      const { error } = await supabase
-        .from('residents')
-        .delete()
-        .eq('id', id);
-      
-      if (error) throw error;
-      
-      // Update the local state
-      setResidents(residents.filter(resident => resident.id !== id));
-    } catch (error) {
-      console.error('Error deleting resident:', error);
-    }
+    deleteResidentMutation.mutate(id);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    try {
-      if (editingResident) {
-        // Update existing resident
-        const { error } = await supabase
-          .from('residents')
-          .update({
-            name: formData.name,
-            room_number: formData.room_number,
-            contact_info: formData.contact_info || null,
-            status: formData.status,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', editingResident.id);
-        
-        if (error) throw error;
-      } else {
-        // Add new resident
-        const { error } = await supabase
-          .from('residents')
-          .insert([{
-            name: formData.name,
-            room_number: formData.room_number,
-            contact_info: formData.contact_info || null,
-            status: formData.status,
-          }]);
-        
-        if (error) throw error;
-      }
-      
-      // Reset form and refresh data
-      resetForm();
-      setShowAddModal(false);
-      fetchResidents();
-    } catch (error) {
-      console.error('Error submitting resident:', error);
+    if (editingResident) {
+      // Update existing resident
+      updateResidentMutation.mutate({
+        id: editingResident.id,
+        name: formData.name,
+        room_number: formData.room_number,
+        contact_info: formData.contact_info || null,
+        status: formData.status,
+      });
+    } else {
+      // Add new resident
+      createResidentMutation.mutate({
+        name: formData.name,
+        room_number: formData.room_number,
+        contact_info: formData.contact_info || null,
+        status: formData.status,
+      });
     }
   };
+
+  // Show loading state if mutations are in progress
+  const isSubmitting = createResidentMutation.isPending || 
+                       updateResidentMutation.isPending || 
+                       deleteResidentMutation.isPending;
 
   return (
     <MainLayout>
@@ -166,7 +173,7 @@ export default function ResidentsPage() {
           </div>
         </div>
 
-        {loading ? (
+        {isLoading ? (
           <div className="text-center py-10">
             <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-indigo-600 border-r-transparent"></div>
             <p className="mt-2 text-gray-500">読み込み中...</p>
@@ -230,12 +237,14 @@ export default function ResidentsPage() {
                               <button
                                 onClick={() => handleEditClick(resident)}
                                 className="inline-flex items-center text-indigo-600 hover:text-indigo-900 mr-4"
+                                disabled={isSubmitting}
                               >
                                 <PencilSquareIcon className="h-4 w-4 mr-1" /> 編集
                               </button>
                               <button
                                 onClick={() => handleDeleteClick(resident.id)}
                                 className="inline-flex items-center text-red-600 hover:text-red-900"
+                                disabled={isSubmitting}
                               >
                                 <TrashIcon className="h-4 w-4 mr-1" /> 削除
                               </button>
@@ -334,8 +343,17 @@ export default function ResidentsPage() {
                 <button
                   type="submit"
                   className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm"
+                  disabled={isSubmitting}
                 >
-                  {editingResident ? '更新' : '追加'}
+                  {isSubmitting ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      処理中...
+                    </>
+                  ) : editingResident ? '更新' : '追加'}
                 </button>
                 <button
                   type="button"
@@ -344,6 +362,7 @@ export default function ResidentsPage() {
                     resetForm();
                   }}
                   className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+                  disabled={isSubmitting}
                 >
                   キャンセル
                 </button>

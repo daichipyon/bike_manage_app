@@ -96,78 +96,22 @@ export default function Dashboard() {
 
   return (
     <MainLayout>
-      <div className="px-4 py-5 sm:px-6">
-        <h1 className="text-2xl font-semibold text-gray-900">ダッシュボード</h1>
-      </div>
-      
       {loading ? (
         <div className="text-center py-10">
           <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-indigo-600 border-r-transparent"></div>
           <p className="mt-2 text-gray-500">読み込み中...</p>
         </div>
       ) : (
+        <>
+        <h1 className='text-xl text-gray-900'>駐輪状況</h1>
         <div className="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
           <StatCard title="総駐輪枠数" value={stats.totalSlots} icon="🏗️" />
           <StatCard title="空き枠数" value={stats.availableSlots} icon="✅" />
           <StatCard title="使用中枠数" value={stats.occupiedSlots} icon="🚲" />
-          <StatCard title="居住者総数" value={stats.totalResidents} icon="👥" />
-          <StatCard title="未払い件数" value={stats.pendingPayments} icon="💰" />
         </div>
+        </>
       )}
 
-      <div className="mt-8 bg-white shadow overflow-hidden sm:rounded-lg">
-        <div className="px-4 py-5 sm:px-6">
-          <h2 className="text-lg leading-6 font-medium text-gray-900">リンク集</h2>
-        </div>
-        <div className="border-t border-gray-200 px-4 py-5 sm:p-0">
-          <dl className="sm:divide-y sm:divide-gray-200">
-            <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-              <dt className="text-sm font-medium text-gray-500">居住者管理</dt>
-              <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                <button
-                  onClick={() => router.push('/residents')}
-                  className="text-indigo-600 hover:text-indigo-900"
-                >
-                  居住者一覧を表示 →
-                </button>
-              </dd>
-            </div>
-            <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-              <dt className="text-sm font-medium text-gray-500">駐輪枠管理</dt>
-              <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                <button
-                  onClick={() => router.push('/bicycle-slots')}
-                  className="text-indigo-600 hover:text-indigo-900"
-                >
-                  駐輪枠一覧を表示 →
-                </button>
-              </dd>
-            </div>
-            <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-              <dt className="text-sm font-medium text-gray-500">入金管理</dt>
-              <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                <button
-                  onClick={() => router.push('/payments')}
-                  className="text-indigo-600 hover:text-indigo-900"
-                >
-                  入金対象者を表示 →
-                </button>
-              </dd>
-            </div>
-            <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-              <dt className="text-sm font-medium text-gray-500">不正利用記録</dt>
-              <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                <button
-                  onClick={() => router.push('/violations')}
-                  className="text-indigo-600 hover:text-indigo-900"
-                >
-                  不正利用記録を表示 →
-                </button>
-              </dd>
-            </div>
-          </dl>
-        </div>
-      </div>
     </MainLayout>
   );
 }
