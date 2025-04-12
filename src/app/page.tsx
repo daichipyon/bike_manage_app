@@ -67,12 +67,12 @@ export default function BicycleSlotsPage() {
     queryKey: ['bicycle_slots_with_residents'],
     queryFn: async () => {
       interface BicycleSlotWithJoin extends BicycleSlot {
-        residents: { name: string } | null;
+        residents: { name: string, room_number: string } | null;
       }
 
       const { data, error } = await supabase
         .from('bicycle_slots')
-        .select('*, residents(name)')
+        .select('*, residents(name, room_number)')
         .order('slot_code', { ascending: true });
       
       if (error) throw error;
@@ -80,7 +80,8 @@ export default function BicycleSlotsPage() {
       // Transform the data to include resident_name
       return data.map((slot: BicycleSlotWithJoin) => ({
         ...slot,
-        resident_name: slot.residents?.name || null
+        resident_name: slot.residents?.name || null,
+        resident_room_number: slot.residents?.room_number || null
       })) as Array<BicycleSlot & { resident_name: string | null }>;
     }
   });
@@ -428,8 +429,8 @@ export default function BicycleSlotsPage() {
                         </tr>
                       ) : (
                         slotsData.map((slot) => {
-                          // Cast the slot to include resident_name property
-                          const slotWithResidentName = slot as BicycleSlot & { resident_name: string | null };
+                          // Cast the slot to include resident_name and resident_room_number properties
+                          const slotWithResidentName = slot as BicycleSlot & { resident_name: string | null, resident_room_number: string | null };
                           return (
                           <tr key={slot.id}>
                             <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-900">
@@ -450,7 +451,7 @@ export default function BicycleSlotsPage() {
                               </span>
                             </td>
                             <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                              {slotWithResidentName.resident_name || '-'}
+                              {slotWithResidentName.resident_id ? `${slotWithResidentName.resident_name}-${slotWithResidentName.resident_room_number}` : '-'}
                             </td>
                             <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
                               {slot.status === 'available' ? (
