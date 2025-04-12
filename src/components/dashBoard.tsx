@@ -3,7 +3,6 @@
 import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-import MainLayout from '@/components/layout/MainLayout';
 import { Database } from '@/types/supabase';
 import { 
   useBicycleSlots, 
@@ -65,11 +64,9 @@ export default function Dashboard() {
   if (hasError) {
     console.error('Error fetching dashboard data:', { slotsError, residentsError, paymentsError });
     return (
-      <MainLayout>
         <div className="text-center py-10">
           <p className="text-red-500">データ取得中にエラーが発生しました。</p>
         </div>
-      </MainLayout>
     );
   }
 
@@ -94,7 +91,7 @@ export default function Dashboard() {
   );
 
   return (
-    <MainLayout>
+    <>
       {isLoading ? (
         <div className="text-center py-10">
           <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-indigo-600 border-r-transparent"></div>
@@ -102,7 +99,6 @@ export default function Dashboard() {
         </div>
       ) : (
         <>
-        <h1 className='text-xl text-gray-900'>駐輪状況</h1>
         <div className="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
           <StatCard title="総駐輪枠数" value={stats.totalSlots} icon="🏗️" />
           <StatCard title="空き枠数" value={stats.availableSlots} icon="✅" />
@@ -110,6 +106,6 @@ export default function Dashboard() {
         </div>
         </>
       )}
-    </MainLayout>
+    </>
   );
 }

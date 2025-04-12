@@ -8,6 +8,7 @@ import { Database } from '@/types/supabase';
 import { PlusIcon, UserPlusIcon, UserMinusIcon, PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { useBicycleSlots, useResidents, useSupabaseMutation } from '@/lib/queries';
 import { useQueryClient } from '@tanstack/react-query';
+import Dashboard from '@/components/dashBoard';
 
 type BicycleSlot = Database['public']['Tables']['bicycle_slots']['Row'];
 type Resident = Database['public']['Tables']['residents']['Row'];
@@ -310,6 +311,7 @@ export default function BicycleSlotsPage() {
             </button>
           </div>
         </div>
+        <Dashboard />
 
         {isLoading ? (
           <div className="text-center py-10">

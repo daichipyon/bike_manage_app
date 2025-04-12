@@ -51,14 +51,14 @@ export default function MainLayout({ children }: MainLayoutProps) {
             </div>
             <nav className="flex space-x-4 text-sm">
               <Link
-                href="/dashboard"
+                href="/"
                 className={`px-3 py-2 rounded-md ${
-                  isActive('/dashboard')
+                  isActive('/')
                     ? 'bg-indigo-100 text-indigo-700'
                     : 'text-gray-700 hover:bg-gray-50'
                 }`}
               >
-                ダッシュボード
+                駐輪枠管理
               </Link>
               <Link
                 href="/residents"
@@ -69,16 +69,6 @@ export default function MainLayout({ children }: MainLayoutProps) {
                 }`}
               >
                 居住者管理
-              </Link>
-              <Link
-                href="/bicycle-slots"
-                className={`px-3 py-2 rounded-md ${
-                  isActive('/bicycle-slots')
-                    ? 'bg-indigo-100 text-indigo-700'
-                    : 'text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                駐輪枠管理
               </Link>
               <Link
                 href="/violations"
