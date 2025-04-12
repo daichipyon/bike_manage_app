@@ -5,10 +5,16 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { useRouter } from 'next/navigation';
 import MainLayout from '@/components/layout/MainLayout';
 import { Database } from '@/types/supabase';
-import { PlusIcon, UserPlusIcon, UserMinusIcon, PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, UserPlusIcon } from '@heroicons/react/24/outline';
 import { useBicycleSlots, useResidents, useSupabaseMutation } from '@/lib/queries';
 import { useQueryClient } from '@tanstack/react-query';
 import Dashboard from '@/components/dashBoard';
+
+// Import modal components
+import BicycleSlotModal from '@/components/modal/BicycleSlotModal';
+import AssignResidentModal from '@/components/modal/AssignResidentModal';
+import AddResidentModal from '@/components/modal/AddResidentModal';
+import SlotSelectionModal from '@/components/modal/SlotSelectionModal';
 
 type BicycleSlot = Database['public']['Tables']['bicycle_slots']['Row'];
 type Resident = Database['public']['Tables']['residents']['Row'];
@@ -28,6 +34,19 @@ export default function BicycleSlotsPage() {
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [editingSlot, setEditingSlot] = useState<BicycleSlot | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<BicycleSlot | null>(null);
+
+  // New states for the add-and-assign flow
+  const [showAddResidentModal, setShowAddResidentModal] = useState(false);
+  const [showSlotSelectionModal, setShowSlotSelectionModal] = useState(false);
+  const [newResident, setNewResident] = useState<Resident | null>(null);
+  const [assigningSlotId, setAssigningSlotId] = useState<number | null>(null);
+  
+  const [residentFormData, setResidentFormData] = useState({
+    name: '',
+    room_number: '',
+    contact_info: '',
+    status: 'active',
+  });
 
   const [slotFormData, setSlotFormData] = useState({
     slot_code: '',
@@ -195,6 +214,31 @@ export default function BicycleSlotsPage() {
     },
   });
 
+  const createResidentMutation = useSupabaseMutation('residents', {
+    mutationFn: async (values: {
+      name: string;
+      room_number: string;
+      contact_info?: string;
+      status: string;
+    }) => {
+      return await supabase
+        .from('residents')
+        .insert([values])
+        .select()
+        .single();
+    },
+    mutationOptions: {
+      onSuccess: (data) => {
+        setNewResident(data.data);
+        setShowAddResidentModal(false);
+        setShowSlotSelectionModal(true);
+      },
+      onError: (error) => {
+        console.error('Error creating resident:', error);
+      },
+    },
+  });
+
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -285,6 +329,17 @@ export default function BicycleSlotsPage() {
     });
   };
 
+  const handleAddResidentSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    createResidentMutation.mutate({
+      name: residentFormData.name,
+      room_number: residentFormData.room_number,
+      contact_info: residentFormData.contact_info,
+      status: residentFormData.status,
+    });
+  };
+
   const isLoading = slotsLoading || residentsLoading;
 
   return (
@@ -304,10 +359,26 @@ export default function BicycleSlotsPage() {
                 resetSlotForm();
                 setShowAddModal(true);
               }}
-              className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 mr-2"
             >
               <PlusIcon className="-ml-1 mr-2 h-5 w-5" />
               駐輪枠を追加
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setResidentFormData({
+                  name: '',
+                  room_number: '',
+                  contact_info: '',
+                  status: 'active',
+                });
+                setShowAddResidentModal(true);
+              }}
+              className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+            >
+              <UserPlusIcon className="-ml-1 mr-2 h-5 w-5" />
+              居住者を追加して割り当てる
             </button>
           </div>
         </div>
@@ -382,27 +453,27 @@ export default function BicycleSlotsPage() {
                                   onClick={() => handleAssignClick(slot)}
                                   className="inline-flex items-center text-green-600 hover:text-green-900 mr-2"
                                 >
-                                  <UserPlusIcon className="h-4 w-4 mr-1" /> 割り当て
+                                  割り当て
                                 </button>
                               ) : (
                                 <button
                                   onClick={() => handleReleaseClick(slot.id)}
                                   className="inline-flex items-center text-orange-600 hover:text-orange-900 mr-2"
                                 >
-                                  <UserMinusIcon className="h-4 w-4 mr-1" /> 解除
+                                  解除
                                 </button>
                               )}
                               <button
                                 onClick={() => handleEditClick(slot)}
                                 className="inline-flex items-center text-indigo-600 hover:text-indigo-900 mr-2"
                               >
-                                <PencilSquareIcon className="h-4 w-4 mr-1" /> 編集
+                                編集
                               </button>
                               <button
                                 onClick={() => handleDeleteClick(slot.id)}
                                 className="inline-flex items-center text-red-600 hover:text-red-900"
                               >
-                                <TrashIcon className="h-4 w-4 mr-1" /> 削除
+                                削除
                               </button>
                             </td>
                           </tr>
@@ -417,154 +488,77 @@ export default function BicycleSlotsPage() {
         )}
       </div>
 
-      {showAddModal && (
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
-            <div className="px-4 py-5 sm:px-6">
-              <h3 className="text-lg leading-6 font-medium text-gray-900">
-                {editingSlot ? '駐輪枠情報を編集' : '新規駐輪枠を追加'}
-              </h3>
-            </div>
-            <form onSubmit={handleSlotSubmit}>
-              <div className="border-t border-gray-200 px-4 py-5 sm:p-6">
-                <div className="grid grid-cols-1 gap-y-6 gap-x-4">
-                  <div>
-                    <label htmlFor="slot_code" className="block text-sm font-medium text-gray-700">
-                      枠番号
-                    </label>
-                    <div className="mt-1">
-                      <input
-                        type="text"
-                        name="slot_code"
-                        id="slot_code"
-                        value={slotFormData.slot_code}
-                        onChange={handleSlotInputChange}
-                        required
-                        className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label htmlFor="location" className="block text-sm font-medium text-gray-700">
-                      位置
-                    </label>
-                    <div className="mt-1">
-                      <input
-                        type="text"
-                        name="location"
-                        id="location"
-                        value={slotFormData.location}
-                        onChange={handleSlotInputChange}
-                        required
-                        className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                <button
-                  type="submit"
-                  disabled={addOrUpdateSlotMutation.isPending}
-                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm"
-                >
-                  {addOrUpdateSlotMutation.isPending ? '処理中...' : editingSlot ? '更新' : '追加'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowAddModal(false);
-                    resetSlotForm();
-                  }}
-                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
-                >
-                  キャンセル
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* Replace inline modals with external components */}
+      <BicycleSlotModal
+        showModal={showAddModal}
+        editingSlot={editingSlot}
+        slotFormData={slotFormData}
+        handleSlotInputChange={handleSlotInputChange}
+        handleSlotSubmit={handleSlotSubmit}
+        closeModal={() => {
+          setShowAddModal(false);
+          resetSlotForm();
+        }}
+        isPending={addOrUpdateSlotMutation.isPending}
+      />
 
-      {/* Assign Resident Modal */}
-      {showAssignModal && selectedSlot && (
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
-            <div className="px-4 py-5 sm:px-6">
-              <h3 className="text-lg leading-6 font-medium text-gray-900">
-                駐輪枠割り当て - {selectedSlot.slot_code}
-              </h3>
-              <p className="mt-1 max-w-2xl text-sm text-gray-500">
-                居住者を枠に割り当ててステッカーを発行
-              </p>
-            </div>
-            <form onSubmit={handleAssignmentSubmit}>
-              <div className="border-t border-gray-200 px-4 py-5 sm:p-6">
-                <div className="grid grid-cols-1 gap-y-6 gap-x-4">
-                  <div>
-                    <label htmlFor="resident_id" className="block text-sm font-medium text-gray-700">
-                      利用者
-                    </label>
-                    <div className="mt-1">
-                      <select
-                        id="resident_id"
-                        name="resident_id"
-                        value={assignmentFormData.resident_id}
-                        onChange={handleAssignmentInputChange}
-                        required
-                        className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
-                      >
-                        <option value="">利用者を選択</option>
-                        {residents &&
-                          residents.map((resident) => (
-                            <option key={resident.id} value={resident.id}>
-                              {resident.room_number} - {resident.name}
-                            </option>
-                          ))}
-                      </select>
-                    </div>
-                  </div>
-                  <div>
-                    <label htmlFor="sticker_number" className="block text-sm font-medium text-gray-700">
-                      ステッカー番号
-                    </label>
-                    <div className="mt-1">
-                      <input
-                        type="text"
-                        name="sticker_number"
-                        id="sticker_number"
-                        value={assignmentFormData.sticker_number}
-                        onChange={handleAssignmentInputChange}
-                        required
-                        className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                <button
-                  type="submit"
-                  disabled={assignSlotMutation.isPending}
-                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-600 text-base font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 sm:ml-3 sm:w-auto sm:text-sm"
-                >
-                  {assignSlotMutation.isPending ? '処理中...' : '割り当て・ステッカー発行'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowAssignModal(false);
-                    resetAssignmentForm();
-                  }}
-                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
-                >
-                  キャンセル
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <AssignResidentModal
+        showModal={showAssignModal}
+        selectedSlot={selectedSlot}
+        residents={residents}
+        assignmentFormData={assignmentFormData}
+        handleAssignmentInputChange={handleAssignmentInputChange}
+        handleAssignmentSubmit={handleAssignmentSubmit}
+        closeModal={() => {
+          setShowAssignModal(false);
+          resetAssignmentForm();
+        }}
+        isPending={assignSlotMutation.isPending}
+      />
+
+      <AddResidentModal
+        showModal={showAddResidentModal}
+        residentFormData={residentFormData}
+        handleResidentInputChange={(e) => {
+          setResidentFormData({
+            ...residentFormData,
+            [e.target.name]: e.target.value,
+          });
+        }}
+        handleAddResidentSubmit={handleAddResidentSubmit}
+        closeModal={() => setShowAddResidentModal(false)}
+        isPending={createResidentMutation.isPending}
+      />
+
+      <SlotSelectionModal
+        showModal={showSlotSelectionModal}
+        newResident={newResident}
+        slotsData={slotsData}
+        handleSlotSelectionClick={(slotId) => {
+          setAssigningSlotId(slotId);
+          // Create a default sticker number for this slot
+          const stickerNumber = `S-${new Date().getFullYear()}-${String(slotId).padStart(3, '0')}`;
+
+          // Assign the newly created resident to this slot
+          assignSlotMutation.mutate({
+            slotId: slotId,
+            residentId: newResident?.id || 0,
+            stickerNumber: stickerNumber
+          }, {
+            onSuccess: () => {
+              setShowSlotSelectionModal(false);
+              setNewResident(null);
+              setAssigningSlotId(null);
+            }
+          });
+        }}
+        closeModal={() => {
+          setShowSlotSelectionModal(false);
+          setNewResident(null);
+        }}
+        isPending={assignSlotMutation.isPending}
+        assigningSlotId={assigningSlotId}
+      />
     </MainLayout>
   );
 }
