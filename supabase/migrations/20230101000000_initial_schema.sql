@@ -1,0 +1,49 @@
+CREATE TABLE residents (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    room_number VARCHAR(50) NOT NULL,
+    contact_info VARCHAR(255),
+    status VARCHAR(50) DEFAULT 'active',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE bicycle_slots (
+    id SERIAL PRIMARY KEY,
+    slot_code VARCHAR(50) NOT NULL,
+    location VARCHAR(255) NOT NULL,
+    resident_id INTEGER REFERENCES residents(id) ON DELETE SET NULL,
+    status VARCHAR(50) DEFAULT 'available',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE stickers (
+    id SERIAL PRIMARY KEY,
+    slot_id INTEGER REFERENCES bicycle_slots(id) ON DELETE CASCADE,
+    sticker_number VARCHAR(50) NOT NULL,
+    issued_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE violation_logs (
+    id SERIAL PRIMARY KEY,
+    location VARCHAR(255) NOT NULL,
+    memo TEXT,
+    photo_url VARCHAR(255),
+    reported_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE payments (
+    id SERIAL PRIMARY KEY,
+    resident_id INTEGER REFERENCES residents(id) ON DELETE CASCADE,
+    month VARCHAR(20) NOT NULL,
+    amount DECIMAL(10, 2) NOT NULL,
+    paid_at TIMESTAMP,
+    status VARCHAR(50) DEFAULT 'pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

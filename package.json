@@ -1,0 +1,39 @@
+{
+  "name": "bike-manage-app",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@headlessui/react": "^2.2.1",
+    "@heroicons/react": "^2.2.0",
+    "@hookform/resolvers": "^5.0.1",
+    "@supabase/auth-helpers-nextjs": "^0.10.0",
+    "@supabase/auth-helpers-react": "^0.5.0",
+    "@supabase/auth-ui-react": "^0.4.7",
+    "@supabase/auth-ui-shared": "^0.1.8",
+    "@supabase/supabase-js": "^2.49.4",
+    "@tailwindcss/forms": "^0.5.10",
+    "@tanstack/react-table": "^8.21.2",
+    "date-fns": "^4.1.0",
+    "next": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "react-hook-form": "^7.55.0",
+    "typescript": "^5.2.2",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.37",
+    "@types/react-dom": "^18.2.15",
+    "autoprefixer": "^10.4.16",
+    "eslint": "^8.53.0",
+    "eslint-config-next": "latest",
+    "postcss": "^8.4.31",
+    "tailwindcss": "^3.4.17"
+  }
+}
