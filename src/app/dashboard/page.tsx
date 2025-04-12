@@ -1,78 +1,77 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import MainLayout from '@/components/layout/MainLayout';
 import { Database } from '@/types/supabase';
+import { 
+  useBicycleSlots, 
+  useResidents, 
+  usePayments 
+} from '@/lib/queries';
 
 export default function Dashboard() {
   const supabase = createClientComponentClient<Database>();
   const router = useRouter();
-  const [stats, setStats] = useState({
-    totalSlots: 0,
-    availableSlots: 0,
-    occupiedSlots: 0,
-    totalResidents: 0,
-    pendingPayments: 0,
+
+  // Query hooks for data fetching
+  const { 
+    data: slotsData, 
+    isLoading: slotsLoading,
+    error: slotsError 
+  } = useBicycleSlots();
+  
+  const { 
+    data: residentsData, 
+    isLoading: residentsLoading,
+    error: residentsError 
+  } = useResidents();
+  
+  const { 
+    data: paymentsData, 
+    isLoading: paymentsLoading,
+    error: paymentsError 
+  } = usePayments({
+    queryKey: ['payments', 'pending'],
+    select: (data) => data.filter(payment => payment.status === 'pending')
   });
-  const [loading, setLoading] = useState(true);
 
+  // Check authentication
   useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        // Get slots stats
-        const { data: slots, error: slotsError } = await supabase
-          .from('bicycle_slots')
-          .select('status');
-
-        if (slotsError) throw slotsError;
-
-        // Get residents count
-        const { count: residentsCount, error: residentsError } = await supabase
-          .from('residents')
-          .select('*', { count: 'exact', head: true });
-
-        if (residentsError) throw residentsError;
-
-        // Get pending payments count
-        const { count: pendingPaymentsCount, error: paymentsError } = await supabase
-          .from('payments')
-          .select('*', { count: 'exact', head: true })
-          .eq('status', 'pending');
-
-        if (paymentsError) throw paymentsError;
-
-        // Calculate stats
-        const totalSlots = slots?.length || 0;
-        const availableSlots = slots?.filter(slot => slot.status === 'available').length || 0;
-        const occupiedSlots = totalSlots - availableSlots;
-
-        setStats({
-          totalSlots,
-          availableSlots,
-          occupiedSlots,
-          totalResidents: residentsCount || 0,
-          pendingPayments: pendingPaymentsCount || 0,
-        });
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         router.push('/login');
-      } else {
-        fetchStats();
       }
     };
 
     checkAuth();
   }, [supabase, router]);
+
+  // Calculate stats from query results
+  const stats = {
+    totalSlots: slotsData?.length || 0,
+    availableSlots: slotsData?.filter(slot => slot.status === 'available').length || 0,
+    occupiedSlots: (slotsData?.length || 0) - (slotsData?.filter(slot => slot.status === 'available').length || 0),
+    totalResidents: residentsData?.length || 0,
+    pendingPayments: paymentsData?.length || 0,
+  };
+
+  // Check for any loading state or errors
+  const isLoading = slotsLoading || residentsLoading || paymentsLoading;
+  const hasError = slotsError || residentsError || paymentsError;
+
+  if (hasError) {
+    console.error('Error fetching dashboard data:', { slotsError, residentsError, paymentsError });
+    return (
+      <MainLayout>
+        <div className="text-center py-10">
+          <p className="text-red-500">データ取得中にエラーが発生しました。</p>
+        </div>
+      </MainLayout>
+    );
+  }
 
   const StatCard = ({ title, value, icon }: { title: string; value: number; icon: string }) => (
     <div className="bg-white overflow-hidden shadow rounded-lg">
@@ -96,7 +95,7 @@ export default function Dashboard() {
 
   return (
     <MainLayout>
-      {loading ? (
+      {isLoading ? (
         <div className="text-center py-10">
           <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-indigo-600 border-r-transparent"></div>
           <p className="mt-2 text-gray-500">読み込み中...</p>
@@ -111,7 +110,6 @@ export default function Dashboard() {
         </div>
         </>
       )}
-
     </MainLayout>
   );
 }

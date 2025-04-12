@@ -6,80 +6,204 @@ import { useRouter } from 'next/navigation';
 import MainLayout from '@/components/layout/MainLayout';
 import { Database } from '@/types/supabase';
 import { PlusIcon, UserPlusIcon, UserMinusIcon, PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { useBicycleSlots, useResidents, useSupabaseMutation } from '@/lib/queries';
+import { useQueryClient } from '@tanstack/react-query';
 
 type BicycleSlot = Database['public']['Tables']['bicycle_slots']['Row'];
 type Resident = Database['public']['Tables']['residents']['Row'];
-type Sticker = Database['public']['Tables']['stickers']['Row'];
+
+// Extended type for bicycle slots with joined resident data
+type BicycleSlotWithResident = BicycleSlot & {
+  residents?: { name: string } | null;
+  resident_name?: string;
+};
 
 export default function BicycleSlotsPage() {
   const supabase = createClientComponentClient<Database>();
   const router = useRouter();
-  const [slots, setSlots] = useState<(BicycleSlot & { resident_name?: string })[]>([]);
-  const [residents, setResidents] = useState<Resident[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+
   const [showAddModal, setShowAddModal] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [editingSlot, setEditingSlot] = useState<BicycleSlot | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<BicycleSlot | null>(null);
-  
+
   const [slotFormData, setSlotFormData] = useState({
     slot_code: '',
     location: '',
   });
-  
+
   const [assignmentFormData, setAssignmentFormData] = useState({
     resident_id: '',
     sticker_number: '',
   });
 
-  useEffect(() => {
-    const checkAuthAndFetchData = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        router.push('/login');
-      } else {
-        fetchData();
+  const {
+    data: slotsData,
+    isLoading: slotsLoading,
+    error: slotsError,
+  } = useBicycleSlots({
+    queryKey: ['bicycle_slots_with_residents'],
+    queryFn: async () => {
+      interface BicycleSlotWithJoin extends BicycleSlot {
+        residents: { name: string } | null;
       }
-    };
-
-    checkAuthAndFetchData();
-  }, [supabase, router]);
-
-  const fetchData = async () => {
-    try {
-      setLoading(true);
       
-      // Fetch bicycle slots with resident info
-      const { data: slotsData, error: slotsError } = await supabase
+      const { data, error } = await supabase
         .from('bicycle_slots')
         .select('*, residents(name)')
         .order('slot_code', { ascending: true });
       
-      if (slotsError) throw slotsError;
+      if (error) throw error;
       
-      const formattedSlots = slotsData.map(slot => ({
+      // Transform the data to include resident_name
+      return data.map((slot: BicycleSlotWithJoin) => ({
         ...slot,
         resident_name: slot.residents?.name || null
-      }));
-      
-      setSlots(formattedSlots);
-      
-      // Fetch active residents for the assignment dropdown
-      const { data: residentsData, error: residentsError } = await supabase
+      })) as Array<BicycleSlot & { resident_name: string | null }>;
+    }
+  });
+
+  const {
+    data: residents,
+    isLoading: residentsLoading,
+  } = useResidents({
+    queryKey: ['active_residents'],
+    queryFn: async () => {
+      const { data, error } = await supabase
         .from('residents')
         .select('*')
         .eq('status', 'active')
         .order('room_number', { ascending: true });
-      
-      if (residentsError) throw residentsError;
-      setResidents(residentsData || []);
-      
-    } catch (error) {
-      console.error('Error fetching data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const addOrUpdateSlotMutation = useSupabaseMutation('bicycle_slots', {
+    mutationFn: async (values: {
+      id?: number;
+      slot_code: string;
+      location: string;
+      status?: string;
+    }) => {
+      if (values.id) {
+        return await supabase
+          .from('bicycle_slots')
+          .update({
+            slot_code: values.slot_code,
+            location: values.location,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', values.id);
+      } else {
+        return await supabase
+          .from('bicycle_slots')
+          .insert([
+            {
+              slot_code: values.slot_code,
+              location: values.location,
+              status: 'available',
+            },
+          ]);
+      }
+    },
+    mutationOptions: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['bicycle_slots_with_residents'] });
+        resetSlotForm();
+        setShowAddModal(false);
+      },
+      onError: (error) => {
+        console.error('Error submitting slot:', error);
+      },
+    },
+  });
+
+  const deleteSlotMutation = useSupabaseMutation('bicycle_slots', {
+    mutationFn: async (id: number) => {
+      return await supabase.from('bicycle_slots').delete().eq('id', id);
+    },
+    mutationOptions: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['bicycle_slots_with_residents'] });
+      },
+      onError: (error) => {
+        console.error('Error deleting slot:', error);
+      },
+    },
+  });
+
+  const assignSlotMutation = useSupabaseMutation('bicycle_slots', {
+    mutationFn: async (values: {
+      slotId: number;
+      residentId: number;
+      stickerNumber: string;
+    }) => {
+      const slotUpdate = await supabase
+        .from('bicycle_slots')
+        .update({
+          resident_id: values.residentId,
+          status: 'occupied',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', values.slotId);
+
+      if (slotUpdate.error) throw slotUpdate.error;
+
+      return await supabase
+        .from('stickers')
+        .insert([
+          {
+            slot_id: values.slotId,
+            sticker_number: values.stickerNumber,
+          },
+        ]);
+    },
+    mutationOptions: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['bicycle_slots_with_residents'] });
+        resetAssignmentForm();
+        setShowAssignModal(false);
+      },
+      onError: (error) => {
+        console.error('Error assigning slot:', error);
+      },
+    },
+  });
+
+  const releaseSlotMutation = useSupabaseMutation('bicycle_slots', {
+    mutationFn: async (slotId: number) => {
+      return await supabase
+        .from('bicycle_slots')
+        .update({
+          resident_id: null,
+          status: 'available',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', slotId);
+    },
+    mutationOptions: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['bicycle_slots_with_residents'] });
+      },
+      onError: (error) => {
+        console.error('Error releasing slot:', error);
+      },
+    },
+  });
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        router.push('/login');
+      }
+    };
+
+    checkAuth();
+  }, [supabase, router]);
 
   const handleSlotInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSlotFormData({
@@ -122,19 +246,7 @@ export default function BicycleSlotsPage() {
 
   const handleDeleteClick = async (id: number) => {
     if (!window.confirm('この駐輪枠を削除しますか？')) return;
-    
-    try {
-      const { error } = await supabase
-        .from('bicycle_slots')
-        .delete()
-        .eq('id', id);
-      
-      if (error) throw error;
-      
-      setSlots(slots.filter(slot => slot.id !== id));
-    } catch (error) {
-      console.error('Error deleting slot:', error);
-    }
+    deleteSlotMutation.mutate(id);
   };
 
   const handleAssignClick = (slot: BicycleSlot) => {
@@ -148,96 +260,31 @@ export default function BicycleSlotsPage() {
 
   const handleReleaseClick = async (slotId: number) => {
     if (!window.confirm('この枠の割り当てを解除しますか？')) return;
-    
-    try {
-      const { error } = await supabase
-        .from('bicycle_slots')
-        .update({
-          resident_id: null,
-          status: 'available',
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', slotId);
-      
-      if (error) throw error;
-      
-      fetchData(); // Refresh data
-    } catch (error) {
-      console.error('Error releasing slot:', error);
-    }
+    releaseSlotMutation.mutate(slotId);
   };
 
   const handleSlotSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    try {
-      if (editingSlot) {
-        // Update existing slot
-        const { error } = await supabase
-          .from('bicycle_slots')
-          .update({
-            slot_code: slotFormData.slot_code,
-            location: slotFormData.location,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', editingSlot.id);
-        
-        if (error) throw error;
-      } else {
-        // Add new slot
-        const { error } = await supabase
-          .from('bicycle_slots')
-          .insert([{
-            slot_code: slotFormData.slot_code,
-            location: slotFormData.location,
-            status: 'available',
-          }]);
-        
-        if (error) throw error;
-      }
-      
-      resetSlotForm();
-      setShowAddModal(false);
-      fetchData();
-    } catch (error) {
-      console.error('Error submitting slot:', error);
-    }
+
+    addOrUpdateSlotMutation.mutate({
+      id: editingSlot?.id,
+      slot_code: slotFormData.slot_code,
+      location: slotFormData.location,
+    });
   };
 
   const handleAssignmentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedSlot) return;
-    
-    try {
-      // First update the bicycle slot with the resident assignment
-      const { error: slotError } = await supabase
-        .from('bicycle_slots')
-        .update({
-          resident_id: parseInt(assignmentFormData.resident_id),
-          status: 'occupied',
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', selectedSlot.id);
-      
-      if (slotError) throw slotError;
-      
-      // Then create a sticker record
-      const { error: stickerError } = await supabase
-        .from('stickers')
-        .insert([{
-          slot_id: selectedSlot.id,
-          sticker_number: assignmentFormData.sticker_number,
-        }]);
-      
-      if (stickerError) throw stickerError;
-      
-      resetAssignmentForm();
-      setShowAssignModal(false);
-      fetchData();
-    } catch (error) {
-      console.error('Error assigning resident to slot:', error);
-    }
+
+    assignSlotMutation.mutate({
+      slotId: selectedSlot.id,
+      residentId: parseInt(assignmentFormData.resident_id),
+      stickerNumber: assignmentFormData.sticker_number,
+    });
   };
+
+  const isLoading = slotsLoading || residentsLoading;
 
   return (
     <MainLayout>
@@ -264,7 +311,7 @@ export default function BicycleSlotsPage() {
           </div>
         </div>
 
-        {loading ? (
+        {isLoading ? (
           <div className="text-center py-10">
             <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-indigo-600 border-r-transparent"></div>
             <p className="mt-2 text-gray-500">読み込み中...</p>
@@ -295,14 +342,17 @@ export default function BicycleSlotsPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 bg-white">
-                      {slots.length === 0 ? (
+                      {!slotsData || slotsData.length === 0 ? (
                         <tr>
                           <td colSpan={5} className="px-3 py-4 text-center text-sm text-gray-500">
                             駐輪枠情報がありません
                           </td>
                         </tr>
                       ) : (
-                        slots.map((slot) => (
+                        slotsData.map((slot) => {
+                          // Cast the slot to include resident_name property
+                          const slotWithResidentName = slot as BicycleSlot & { resident_name: string | null };
+                          return (
                           <tr key={slot.id}>
                             <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-900">
                               {slot.slot_code}
@@ -322,7 +372,7 @@ export default function BicycleSlotsPage() {
                               </span>
                             </td>
                             <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                              {slot.resident_name || '-'}
+                              {slotWithResidentName.resident_name || '-'}
                             </td>
                             <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
                               {slot.status === 'available' ? (
@@ -354,7 +404,7 @@ export default function BicycleSlotsPage() {
                               </button>
                             </td>
                           </tr>
-                        ))
+                        )})
                       )}
                     </tbody>
                   </table>
@@ -365,7 +415,6 @@ export default function BicycleSlotsPage() {
         )}
       </div>
 
-      {/* Add/Edit Slot Modal */}
       {showAddModal && (
         <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
@@ -414,9 +463,10 @@ export default function BicycleSlotsPage() {
               <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
                 <button
                   type="submit"
+                  disabled={addOrUpdateSlotMutation.isPending}
                   className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm"
                 >
-                  {editingSlot ? '更新' : '追加'}
+                  {addOrUpdateSlotMutation.isPending ? '処理中...' : editingSlot ? '更新' : '追加'}
                 </button>
                 <button
                   type="button"
@@ -463,11 +513,12 @@ export default function BicycleSlotsPage() {
                         className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
                       >
                         <option value="">利用者を選択</option>
-                        {residents.map(resident => (
-                          <option key={resident.id} value={resident.id}>
-                            {resident.room_number} - {resident.name}
-                          </option>
-                        ))}
+                        {residents &&
+                          residents.map((resident) => (
+                            <option key={resident.id} value={resident.id}>
+                              {resident.room_number} - {resident.name}
+                            </option>
+                          ))}
                       </select>
                     </div>
                   </div>
@@ -492,9 +543,10 @@ export default function BicycleSlotsPage() {
               <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
                 <button
                   type="submit"
+                  disabled={assignSlotMutation.isPending}
                   className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-600 text-base font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 sm:ml-3 sm:w-auto sm:text-sm"
                 >
-                  割り当て・ステッカー発行
+                  {assignSlotMutation.isPending ? '処理中...' : '割り当て・ステッカー発行'}
                 </button>
                 <button
                   type="button"
