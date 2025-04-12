@@ -74,6 +74,12 @@ FOR EACH ROW EXECUTE FUNCTION record_version();
 CREATE OR REPLACE FUNCTION soft_delete_resident(p_id INTEGER)
 RETURNS VOID AS $$
 BEGIN
+    -- 削除される居住者に紐づく駐輪枠を「空き」状態に更新
+    UPDATE bicycle_slots 
+    SET resident_id = NULL, status = 'available', updated_at = CURRENT_TIMESTAMP 
+    WHERE resident_id = p_id;
+    
+    -- 居住者をソフトデリート
     UPDATE residents SET deleted_at = CURRENT_TIMESTAMP WHERE id = p_id;
 END;
 $$ LANGUAGE plpgsql;
