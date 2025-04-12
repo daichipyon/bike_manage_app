@@ -15,6 +15,7 @@ import BicycleSlotModal from '@/components/modal/BicycleSlotModal';
 import AssignResidentModal from '@/components/modal/AssignResidentModal';
 import AddResidentModal from '@/components/modal/AddResidentModal';
 import SlotSelectionModal from '@/components/modal/SlotSelectionModal';
+import SlotTable from '@/components/organizms/slotTable';
 
 type BicycleSlot = Database['public']['Tables']['bicycle_slots']['Row'];
 type Resident = Database['public']['Tables']['residents']['Row'];
@@ -40,7 +41,7 @@ export default function BicycleSlotsPage() {
   const [showSlotSelectionModal, setShowSlotSelectionModal] = useState(false);
   const [newResident, setNewResident] = useState<Resident | null>(null);
   const [assigningSlotId, setAssigningSlotId] = useState<number | null>(null);
-  
+
   const [residentFormData, setResidentFormData] = useState({
     name: '',
     room_number: '',
@@ -68,7 +69,7 @@ export default function BicycleSlotsPage() {
       interface BicycleSlotWithJoin extends BicycleSlot {
         residents: { name: string } | null;
       }
-      
+
       const { data, error } = await supabase
         .from('bicycle_slots')
         .select('*, residents(name)')
@@ -238,6 +239,10 @@ export default function BicycleSlotsPage() {
       },
     },
   });
+
+  const refreshData = () => {
+    queryClient.invalidateQueries({ queryKey: ['bicycle_slots_with_residents'] });
+  };
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -530,6 +535,7 @@ export default function BicycleSlotsPage() {
         isPending={createResidentMutation.isPending}
       />
 
+
       <SlotSelectionModal
         showModal={showSlotSelectionModal}
         newResident={newResident}
@@ -559,6 +565,11 @@ export default function BicycleSlotsPage() {
         isPending={assignSlotMutation.isPending}
         assigningSlotId={assigningSlotId}
       />
+
+      { createResidentMutation.data && (
+          <SlotTable createdResident={createResidentMutation.data} onClose={() => refreshData()}></SlotTable>
+      )}
+
     </MainLayout>
   );
 }
