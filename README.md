@@ -71,18 +71,65 @@ yarn dev
 ## ディレクトリ構造
 
 ```
-src/
-  app/                 # Next.jsアプリケーションルーター
-    (authenticated)/   # 認証が必要なルート
-    login/             # ログインページ
-    globals.css        # グローバルスタイル
-  components/          # 再利用可能なUIコンポーネント
-  hooks/               # カスタムReactフック
-  lib/                 # ユーティリティ関数
-    actions/           # サーバーアクション
-    validators/        # Zodスキーマ
-  types/               # TypeScript型定義
-supabase/              # Supabaseマイグレーションと設定
+├── public/                  # 静的ファイル
+│   ├── assets/              # アセットファイル（画像、ロゴなど）
+│   └── favicon/             # ファビコン
+│
+├── src/                     # ソースコード
+│   ├── app/                 # Next.jsアプリケーションルーター
+│   │   ├── globals.css      # グローバルスタイル
+│   │   ├── layout.tsx       # ルートレイアウト
+│   │   ├── page.tsx         # ホームページ
+│   │   ├── (authenticated)/ # 認証が必要なルート
+│   │   │   ├── actions.ts   # 認証済みルート用サーバーアクション
+│   │   │   ├── layout.tsx   # 認証済みルート用レイアウト
+│   │   │   ├── page.tsx     # 認証済みルート用ページ
+│   │   │   ├── assign/      # 駐輪枠割り当てページ
+│   │   │   ├── bicycle-slots/ # 駐輪枠管理ページ
+│   │   │   ├── dashboard/   # ダッシュボードページ
+│   │   │   ├── payments/    # 入金管理ページ
+│   │   │   ├── residents/   # 居住者管理ページ
+│   │   │   └── violations/  # 不正利用記録ページ
+│   │   ├── (public)/        # 認証不要の公開ルート
+│   │   │   └── login/       # ログインページ
+│   │   └── auth/            # 認証関連ルート
+│   │       └── callback/    # 認証コールバック処理
+│   │
+│   ├── components/          # 再利用可能なUIコンポーネント
+│   │   ├── layout/          # レイアウト関連コンポーネント
+│   │   ├── payments/        # 入金関連コンポーネント
+│   │   └── slots/           # 駐輪枠関連コンポーネント
+│   │
+│   ├── hooks/               # カスタムReactフック
+│   │
+│   ├── lib/                 # ユーティリティ関数とライブラリ
+│   │   ├── actions/         # サーバーアクション
+│   │   ├── validators/      # Zodスキーマによるバリデーション
+│   │   └── supabase-server.ts # Supabase関連の処理
+│   │
+│   ├── middleware.ts        # Next.jsミドルウェア
+│   │
+│   ├── types/               # TypeScript型定義
+│   │   └── supabase.ts      # Supabase関連の型定義
+│   │
+│   └── utils/               # ユーティリティ関数
+│       └── supabase/        # Supabase関連ユーティリティ
+│
+├── supabase/                # Supabaseマイグレーションと設定
+│   ├── migrations/          # データベースマイグレーションファイル
+│   ├── config.toml          # Supabase設定ファイル
+│   ├── seed.sql             # 初期データ投入用SQL
+│   └── setup.sh             # セットアップスクリプト
+│
+├── developing-guide.md      # 開発ガイド
+├── next-env.d.ts            # Next.js環境型定義
+├── next.config.js           # Next.js設定
+├── package.json             # プロジェクト依存関係とスクリプト
+├── postcss.config.js        # PostCSS設定
+├── requirement.md           # 要件定義
+├── system-design.md         # システム設計
+├── tailwind.config.ts       # Tailwind CSS設定
+└── tsconfig.json            # TypeScript設定
 ```
 
 ## ライセンス

@@ -13,10 +13,16 @@ import {
 
 export default async function DashboardPage() {
   // Fetch statistics for the dashboard
-  const bicycleStats = await getBicycleSlotStatistics();
-  const residentStats = await getResidentStatistics();
-  const violationStats = await getViolationStatistics();
-  const paymentStats = await getPaymentStatistics();
+  const [bicycleStats, residentStats, violationStats, paymentStats] = await Promise.all([
+    getBicycleSlotStatistics(),
+    getResidentStatistics(),
+    getViolationStatistics(),
+    getPaymentStatistics(),
+  ]);
+  console.log(
+    "🚀 ~ file: page.tsx:10 ~ DashboardPage ~ paymentStats:",
+    paymentStats
+    );
 
   const stats = [
     {
