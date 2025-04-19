@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AssignmentFormValues, assignmentSchema } from "@/lib/validators/schemas";
-import AuthenticatedLayout from "@/components/layout/AuthenticatedLayout";
 import { getAllResidents } from "@/lib/actions/residents";
 import { getAvailableBicycleSlots, updateBicycleSlot } from "@/lib/actions/bicycle-slots";
 import { createResidentAndReturnId } from "@/lib/actions/residents";
@@ -125,7 +124,6 @@ export default function AssignPage() {
   };
 
   return (
-    <AuthenticatedLayout>
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">
@@ -390,6 +388,5 @@ export default function AssignPage() {
           </div>
         )}
       </div>
-    </AuthenticatedLayout>
   );
 }
