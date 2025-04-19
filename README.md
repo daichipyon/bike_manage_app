@@ -1,141 +1,90 @@
-# Bike Manage App
+# マンション駐輪場管理システム
 
-## Overview | 概要
+マンション共同駐輪場の管理を効率化するためのウェブアプリケーションです。
 
-The Bike Manage App is a web application designed to manage bicycle parking slots in a condominium. It allows administrators to oversee the usage of bicycle slots, manage resident information, and handle payments efficiently. The application is built using Next.js, TypeScript, and Supabase for backend services.
+## 機能
 
-マンションの自転車駐輪場を管理するためのウェブアプリケーションです。管理者が自転車スロットの利用状況、住民情報、支払い情報を効率的に管理できます。Next.js、TypeScript、Supabaseを使用して構築されています。
+- 駐輪枠の管理（追加、編集、表示）
+- 居住者情報の管理（追加、編集、表示）
+- 駐輪枠と居住者の紐付け管理
+- ステッカー発行管理
+- 不正駐輪の記録と管理
+- 入金管理
 
-## Features | 機能
+## 技術スタック
 
-- **User Authentication**: Secure login for administrators.
-- **Dashboard**: A central hub for managing residents, slots, violations, and payments.
-- **Residents Management**: Add, edit, and view resident information.
-- **Slots Management**: Assign and release bicycle parking slots.
-- **Violations Management**: Record and track violations of parking rules.
-- **Payments Management**: Manage payment records and export payment data.
+- **フロントエンド**: Next.js (App Router), React, TypeScript, TailwindCSS
+- **バックエンド**: Supabase (PostgreSQL, Auth)
+- **データ取得**: タンスタッククエリ
+- **フォーム処理**: React Hook Form, Zod
 
-## Technologies Used | 使用技術
+## セットアップ
 
-- **Frontend**: Next.js, TypeScript, Tailwind CSS
-- **Backend**: Supabase (PostgreSQL database, authentication)
-- **Styling**: Custom CSS and Tailwind CSS for responsive design
+### 必要条件
 
-## Database Schema | データベース構造
+- Node.js (v16.14.0以上)
+- npm または yarn
+- Supabaseアカウント
 
-The application uses Supabase (PostgreSQL) with the following tables:
+### インストール
 
-1. **residents**: Stores information about condominium residents
-2. **bicycle_slots**: Tracks all parking slots and their assignments
-3. **stickers**: Records registration stickers issued for bicycles
-4. **violation_logs**: Logs parking rule violations
-5. **payments**: Tracks monthly parking fee payments
-
-## Project Structure | プロジェクト構成
+1. リポジトリをクローン
 
 ```
-bike-manage-app
-├── src
-│   ├── app                  // Next.js app router components
-│   ├── components           // Reusable UI components
-│   ├── lib                  // Utilities including Supabase client
-│   ├── types                // TypeScript type definitions
-│   └── styles               // Global styles and Tailwind config
-├── public                   // Static assets
-├── supabase                 // Supabase configuration and migrations
-│   ├── config.toml          // Supabase configuration
-│   ├── migrations           // Database migrations
-│   └── seed.sql             // Seed data for development
-├── .env.local.example       // Environment variable template
-└── ...                      // Other configuration files
+git clone https://github.com/your-username/bike_manage_app.git
+cd bike_manage_app
 ```
 
-## Getting Started | 始め方
+2. 依存関係をインストール
 
-### Prerequisites | 前提条件
+```
+npm install
+# または
+yarn install
+```
 
-- Node.js 16.x or higher
-- npm or yarn
-- Supabase account (for production) or Docker (for local development)
+3. 環境変数の設定
 
-### Installation | インストール
+`.env.local`ファイルをプロジェクトのルートに作成し、以下の変数を設定：
 
-1. **Clone the repository | リポジトリのクローン**:
-   ```
-   git clone <repository-url>
-   cd bike-manage-app
-   ```
+```
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
 
-2. **Install dependencies | 依存関係のインストール**:
-   ```
-   npm install
-   ```
+4. 開発サーバーの起動
 
-3. **Set up Supabase locally | Supabaseのローカル環境設定**:
-   
-   a. Install Supabase CLI | Supabase CLIのインストール:
-   ```
-   npm install -g supabase
-   ```
-   
-   b. Start local Supabase | ローカルSupabaseの起動:
-   ```
-   supabase start
-   ```
-   This will start a local Supabase instance using Docker with:
-   - REST API: http://localhost:54321
-   - Database: postgresql://postgres:postgres@localhost:54322/postgres
-   - Studio: http://localhost:54323
+```
+npm run dev
+# または
+yarn dev
+```
 
-4. **Set up environment variables | 環境変数の設定**:
-   - Copy `.env.local.example` to `.env.local`
-   ```
-   cp .env.local.example .env.local
-   ```
-   - The local Supabase credentials are already configured in the example file 
-   - For production, update with your Supabase project credentials
+5. ブラウザで `http://localhost:3000` にアクセス
 
-5. **Apply migrations | マイグレーションの適用**:
-   ```
-   supabase db reset
-   ```
-   This will apply all migrations in the `supabase/migrations` folder and seed data from `seed.sql`.
+### Supabaseの設定
 
-6. **Run the development server | 開発サーバーの起動**:
-   ```
-   npm run dev
-   ```
+1. Supabaseでプロジェクトを作成
+2. `supabase/migrations` フォルダ内のSQLファイルを実行して、必要なテーブルとRLSポリシーを設定
+3. 必要に応じて `supabase/seed.sql` を実行して初期データを投入
 
-7. **Open your browser | ブラウザで開く**:
-   Navigate to `http://localhost:3000` to view the application.
+## ディレクトリ構造
 
-## Supabase Integration | Supabase連携
+```
+src/
+  app/                 # Next.jsアプリケーションルーター
+    (authenticated)/   # 認証が必要なルート
+    login/             # ログインページ
+    globals.css        # グローバルスタイル
+  components/          # 再利用可能なUIコンポーネント
+  hooks/               # カスタムReactフック
+  lib/                 # ユーティリティ関数
+    actions/           # サーバーアクション
+    validators/        # Zodスキーマ
+  types/               # TypeScript型定義
+supabase/              # Supabaseマイグレーションと設定
+```
 
-The app integrates with Supabase for:
+## ライセンス
 
-1. **Authentication**: Administrator login and session management
-2. **Database**: PostgreSQL database for storing all application data
-3. **Realtime**: Real-time updates for collaborative features
-4. **Storage**: File storage for violation photos and other documents
-
-### Database Tables | データベーステーブル
-
-- **residents**: Manages resident information (name, room number, contact info)
-- **bicycle_slots**: Tracks parking slots, their location, and assignment status
-- **stickers**: Records bicycle registration stickers issued to residents
-- **violation_logs**: Documents parking violations with optional photos
-- **payments**: Manages monthly parking fee payments from residents
-
-### Development Workflow | 開発ワークフロー
-
-1. Make changes to the database schema in `supabase/migrations/`
-2. Apply changes with `supabase db reset` for local development
-3. When ready, deploy schema changes to production with `supabase db push`
-
-## Contributing | 貢献
-
-Contributions are welcome! Please open an issue or submit a pull request for any enhancements or bug fixes.
-
-## License | ライセンス
-
-This project is licensed under the MIT License. See the LICENSE file for more details.
+このプロジェクトは[MITライセンス](LICENSE)の下で提供されています。

@@ -9,7 +9,6 @@
 
 ### フロントエンド（Next.js）
 - **フレームワーク**：Next.js App Router (ver.13+)
-- **データ取得・キャッシュ管理**：tanstack query (react-query)
 - **フォーム送信**：Next.js Server Actions
 - **バリデーション**：Zod
 
@@ -62,10 +61,13 @@
 - Supabaseの自動生成型は`/types/db.ts`
 - Zodバリデーションの型推論を使用 (`z.infer<typeof schema>`)
 
-### クエリ管理（tanstack query）
-- `queries.ts`で管理
-- QueryKeyは配列で階層化 `["project", projectId]`
-- mutationでのエラーハンドリングを徹底
+## 構成
+- app routerを使って,server side renderingを活用する
+- 極力 use clientを使わない
+- `use client`はUIコンポーネントに限定
+- `useEffect`は極力使用しない
+- `useState`は極力使用しない
+- `useMemo`や`useCallback`の使用を推奨
 
 ### UI設計
 - UIライブラリは`shadcn/ui`
