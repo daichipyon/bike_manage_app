@@ -62,7 +62,6 @@ export async function updateSession(request: NextRequest) {
   // of sync and terminate the user's session prematurely!
 
 
-  console.log('User session updated:', supabaseResponse);
 
   return supabaseResponse
 }
