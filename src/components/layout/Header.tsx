@@ -1,5 +1,3 @@
-"use client";
-
 import { User } from "@supabase/supabase-js";
 import Image from "next/image";
 import { logout } from "@/app/(authenticated)/actions";
