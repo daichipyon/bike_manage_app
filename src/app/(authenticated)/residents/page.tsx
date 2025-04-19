@@ -1,5 +1,4 @@
 import { getAllResidents } from "@/lib/actions/residents";
-import AuthenticatedLayout from "@/components/layout/AuthenticatedLayout";
 import Link from "next/link";
 import { UserPlusIcon } from "@heroicons/react/24/outline";
 
@@ -7,7 +6,6 @@ export default async function ResidentsPage() {
   const residents = await getAllResidents();
 
   return (
-    <AuthenticatedLayout>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
@@ -127,6 +125,5 @@ export default async function ResidentsPage() {
           </div>
         </div>
       </div>
-    </AuthenticatedLayout>
   );
 }

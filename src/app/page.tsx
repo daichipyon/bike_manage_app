@@ -1,16 +1,16 @@
-import { createSupabaseServerClient } from '@/lib/supabase-server';
-import { redirect } from 'next/navigation';
+import { createClient } from '@/utils/supabase/server'
+import { redirect } from 'next/navigation'
 
 export default async function Home() {
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createClient()
 
-  // Check if user is authenticated
-  const { data: { session } } = await supabase.auth.getSession();
+  // getUser()を使用して正確な認証状態を確認
+  const { data: { user } } = await supabase.auth.getUser()
   
-  // Redirect to dashboard if authenticated, otherwise to login
-  if (session) {
-    redirect('/dashboard');
+  // 認証済みならダッシュボードへ、未認証ならログインページへ
+  if (user) {
+    redirect('/dashboard')
   } else {
-    redirect('/login');
+    redirect('/login')
   }
 }

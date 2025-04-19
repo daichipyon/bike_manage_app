@@ -1,11 +1,10 @@
 "use client";
 
-import { useAuth } from "@/hooks/useAuth";
+import { User } from "@supabase/supabase-js";
 import Image from "next/image";
+import { logout } from "@/app/(authenticated)/actions";
 
-export default function Header() {
-  const { user, signOut } = useAuth();
-
+export default function Header({ user }: { user: User }) {
   return (
     <header className="border-b bg-white shadow-sm">
       <div className="flex items-center justify-between px-4 py-3">
@@ -22,12 +21,14 @@ export default function Header() {
           <span className="text-sm text-gray-600">
             {user?.email || 'ログイン中'}
           </span>
-          <button
-            onClick={() => signOut()}
-            className="rounded px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100"
-          >
-            ログアウト
-          </button>
+          <form action={logout}>
+            <button
+              type="submit"
+              className="rounded px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100"
+            >
+              ログアウト
+            </button>
+          </form>
         </div>
       </div>
     </header>

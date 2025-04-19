@@ -1,5 +1,4 @@
 import { getAllBicycleSlots } from "@/lib/actions/bicycle-slots";
-import AuthenticatedLayout from "@/components/layout/AuthenticatedLayout";
 import Link from "next/link";
 import { PlusCircleIcon } from "@heroicons/react/24/outline";
 import SlotActions from "@/components/slots/SlotActions";
@@ -8,7 +7,6 @@ export default async function BicycleSlotsPage() {
   const slots = await getAllBicycleSlots();
 
   return (
-    <AuthenticatedLayout>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
@@ -121,6 +119,5 @@ export default async function BicycleSlotsPage() {
           </div>
         </div>
       </div>
-    </AuthenticatedLayout>
   );
 }

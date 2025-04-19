@@ -1,4 +1,3 @@
-import AuthenticatedLayout from "@/components/layout/AuthenticatedLayout";
 import Link from "next/link";
 import { getBicycleSlotStatistics } from "@/lib/actions/bicycle-slots";
 import { getResidentStatistics } from "@/lib/actions/residents";
@@ -55,7 +54,6 @@ export default async function DashboardPage() {
   ];
 
   return (
-    <AuthenticatedLayout>
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">ダッシュボード</h1>
@@ -154,6 +152,5 @@ export default async function DashboardPage() {
           </div>
         </div>
       </div>
-    </AuthenticatedLayout>
   );
 }
